@@ -1,0 +1,35 @@
+version: '2'
+services:
+
+  elasticsearch:
+    build: es
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+      - ./es/config:/usr/share/elasticsearch/config
+    ports:
+      - 9200:9200
+    expose:
+      - 9200
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  kibana:
+    build: kibana
+    # links:
+    # - elasticsearch:elasticsearch
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601
+
+  clawler:
+    build: clawler
+    depends_on:
+      - elasticsearch
+      - kibana
+
+volumes:
+  es-data:
+    driver: local

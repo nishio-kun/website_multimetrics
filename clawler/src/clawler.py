@@ -11,14 +11,14 @@ logging.getLogger('readability.readability').setLevel(logging.WARNING)
 
 def get_content(html):
     """
-    HTML の文字列から (タイトル, 本文) のタプルを取得します。
+    HTML の文字列から タイトル, 本文 を取得します。
     """
     document = readability.Document(html)
-    short_title = document.short_title()
+    title = document.title()
     content_html = document.summary()
     content_text = lxml.html.fromstring(content_html).text_content().strip()
 
-    return (short_title, content_text)
+    return {'title': title, 'body': content_text}
 
 
 def parse_base_url(url):
@@ -74,20 +74,6 @@ class Site:
             if parse_base_url(url) == self.url:
                 ret.add(url)
         return sorted(list(ret))
-
-
-class Page:
-    """
-    WEB ページクラス
-    """
-    def __init__(self, url, title, content):
-        self.site = get_base_url(url)
-        self.url = url
-        self.title = title
-        self.content = content
-
-    def __repr__(self):
-        return self.url
 
 
 if __name__ == '__main__':
