@@ -1,4 +1,7 @@
+# anaconda
 elasticsearch
 lxml
-readability-lxml
 requests
+
+# pip
+readability-lxml
