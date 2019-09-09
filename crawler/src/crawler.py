@@ -1,6 +1,5 @@
-"""
-"""
 import logging
+import time
 from urllib.parse import urlsplit
 
 import lxml.html
@@ -8,7 +7,36 @@ import readability
 import requests
 
 
+# set logger
 logging.getLogger('readability.readability').setLevel(logging.WARNING)
+
+
+def get_page(n, queue, done):
+    """
+    記事をダウンロードします。
+    """
+    n_downloaded = 0
+    no_body = 0
+    while n > n_downloaded - no_body:
+        tmp_url = queue.pop(0)
+        page = Page(tmp_url)
+        page.download()
+        page.get_content()
+
+        n_downloaded += 1
+        # logger.debug(f'{n_downloaded} page downloaded {page.url}')
+        time.sleep(1)
+
+        if not page.body:  # TODO:+ if 記事じゃない
+            no_body += 1
+            # logger.info(f'not article or no body {page.url}')
+
+        for url in page.list_article_url():
+            if (not url in done) or (not url in queue) or (not url == tmp_url):
+                queue.append(url)
+            done.append(tmp_url)
+
+        yield page
 
 
 def parse_base_url(url):

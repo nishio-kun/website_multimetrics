@@ -4,12 +4,12 @@ entry point
 import argparse
 import logging
 import sys
-import time
 
+from elasticsearch import Elasticsearch
 import requests
 
-from src.crawler import parse_base_url, Page
-from src.es_util import upload, connect
+from src.crawler import get_page
+from src.es_util import download_all, indice, upload
 
 
 # set logger
@@ -21,74 +21,50 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 
-urls = [
-    # 'https://www.itmedia.co.jp/pcuser/articles/1908/25/news016.html',
-
-    'https://gigazine.net/news/20190825-plastics-recycling/',
-    'https://gigazine.net/news/20190826-youtube-dmca-report-abuse/',
-    'https://gigazine.net/news/20190826-teen-mental-health-tech-time/',
-    'https://gigazine.net/news/20190825-fbi-quickly-build-trust/',
-    'https://gigazine.net/news/20190827-matsuya-gourmet-set/',
-    'https://gigazine.net/news/20190827-france-digital-tax-deal/',
-    'https://gigazine.net/news/20190827-lucy-in-the-sky-trailer/',
-    'https://gigazine.net/news/20190827-opioid-lawsuit-verdict/',
-    'https://gigazine.net/news/20190826-google-bans-political-discussion/',
-    'https://gigazine.net/news/20190826-trinitite-reminds-atomic-bomb-power/',
-    'https://gigazine.net/news/20190826-industrial-revolution-hours-workweek/',
-]
+HOST = 'localhost:9200'
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--url',
-                        # required=True,
+                        required=True,
                         help='Website url')
+    parser.add_argument('-i', '--index',
+                        required=True,
+                        help='Index name')
     parser.add_argument('-n',
                         default=10,
                         type=int,
                         help='Number of pages you want to download')
     args = parser.parse_args()
+    return args
 
-    # queue = [args.url]
-    queue = [urls[0]]
+
+def main():
+    args = parse_args()
+
+    queue = [args.url]
     done = []
     logger.info('Start crawling...')
 
-    client = connect()
+    client = Elasticsearch(HOST)
+    index = f'pages-{args.index}'
 
-    n_downloaded = 0
-    no_body = 0
-    while args.n > n_downloaded - no_body:
-        # download a page
-        tmp_url = queue.pop(0)
-        page = Page(tmp_url)
-        page.download()
-        page.get_content()
+    indice(client, index)
+    done.extend(download_all(client, index))
 
-        n_downloaded += 1
-        logger.info(f'{n_downloaded} page downloaded {page.url}')
-        time.sleep(1)
-
-        if not page.body:  # TODO:+ if 記事じゃない
-            no_body += 1
-            logger.info(f'not article or no body {page.url}')
-
-        for url in page.list_article_url():
-            if (not url in done) or (not url in queue) or (not url == tmp_url):
-                queue.append(url)
-        done.append(tmp_url)
-
-        # insert data into elasticsearch
-        upload(client,
-               {'url': page.url, 'title': page.title, 'body': page.body})
-        logger.debug('Inserted a page into elasticsearch')
+    for i, page in enumerate(get_page(args.n, queue, done)):
+        upload(client, index, {'url': page.url,
+                               'title': page.title,
+                               'body': page.body,
+                               'raw': page.response.text})
+        logger.debug(f'Inserted a page into elasticsearch {i} {page.url}')
 
         if len(queue) == 0:
             break
 
     logger.info(f'crawling finished successfully.')
     logger.info(f'{n_downloaded - no_body} pages saved.')
-    logger.info(f'{no_body} pages have no body ({no_body / n_downloaded:.1%}).')
 
 
 if __name__ == '__main__':

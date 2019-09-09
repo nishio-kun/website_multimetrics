@@ -3,7 +3,7 @@ import time
 import elasticsearch
 
 
-settings = {
+BODY = {
     'settings': {
         'analysis': {
             'tokenizer': {
@@ -19,10 +19,7 @@ settings = {
                 }
             }
         }
-    }
-}
-
-mappings = {
+    },
     'mappings' : {
         '_doc' : {
             'properties' : {
@@ -54,22 +51,59 @@ mappings = {
 }
 
 
-def connect():
+def download_all(client, index):
     """
-    elasticsearch のインデックスを作成します。
+    指定された index のデータを全て取得します。
     """
-    client = elasticsearch.Elasticsearch('localhost:9200')
-    # client.indices.create(index='pages', body=settings)
-    # client.indices.put_mapping(index='pages', body=mappings)
-    client.indices.create(index='pages', body={'settings': settings['settings'], 'mappings': mappings['mappings']})
-    return client
+    ret = []
+    data = client.search(index=index, scroll='2m',
+                         body={'query': {'match_all': {}}})
+    sid = data['_scroll_id']
+    pages = data['hits']['hits']
+    size = data['hits']['total']
+    ret.extend(get_data(pages, 'url'))
+
+    while size > 0:
+        data = client.scroll(scroll_id=sid, scroll='2m')
+        sid = data['_scroll_id']
+        pages = data['hits']['hits']
+        size = len(pages)
+        ret.extend(get_data(pages, 'url'))
+
+    return ret
 
 
-def upload(client, page):
+def indice(client, index):
+    """
+    指定された index を作成します。
+    """
+    try:
+        client.indices.create(index=index, body=BODY)
+    except elasticsearch.exceptions.RequestError as e:
+        if e.info['error']['root_cause'][0]['type'] == \
+                'resource_already_exists_exception':
+            pass
+        else:
+            raise
+    except Exception:
+        raise
+
+
+def get_data(pages, field):
+    """
+    指定された field のデータを取得します。
+    """
+    ret = []
+    for page in pages:
+        ret.append(page['_source'][field])
+    return ret
+
+
+def upload(client, index, page):
     """
     WEB ページの辞書を elasticsearch にアップロードします。
     """
-    client.index(index='pages', doc_type='_doc', body=page)
+    client.index(index=index, doc_type='_doc', body=page)
 
 
 if __name__ == '__main__':
