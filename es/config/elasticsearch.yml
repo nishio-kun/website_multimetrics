@@ -11,5 +11,5 @@ xpack.graph.enabled: true
 xpack.watcher.enabled: false
 
 # set kuromoji as default Tokenizer
-index.analysis.analyzer.default.type: custom
-index.analysis.analyzer.default.tokenizer: kuromoji_tokenizer
+# index.analysis.analyzer.default.type: custom
+# index.analysis.analyzer.default.tokenizer: kuromoji_tokenizer
