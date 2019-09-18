@@ -1,3 +1,6 @@
+"""
+Elasticsearch, Kibana を扱うモジュール。
+"""
 import time
 
 import elasticsearch

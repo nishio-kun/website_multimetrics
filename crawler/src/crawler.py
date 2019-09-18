@@ -1,3 +1,6 @@
+"""
+Web サイトから記事をダウンロード、パースするモジュール。
+"""
 import logging
 import time
 from urllib.parse import urlsplit
