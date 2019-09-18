@@ -8,6 +8,8 @@ import sys
 from elasticsearch import Elasticsearch
 import requests
 
+import settings
+from src.cotoha import get_access_token, get_morpheme, parse
 from src.crawler import get_page
 from src.es_util import download_all, indice, upload
 
@@ -20,8 +22,6 @@ handler.setFormatter(formatter)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
-
-HOST = 'localhost:9200'
 
 
 def parse_args():
@@ -47,16 +47,21 @@ def main():
     done = []
     logger.info('Start crawling...')
 
-    client = Elasticsearch(HOST)
+    client = Elasticsearch(settings.HOST)
     index = f'pages-{args.index}'
 
     indice(client, index)
     done.extend(download_all(client, index))
 
+    token = get_access_token(settings.DEVELOPER_CLIENT_ID,
+                             settings.DEVELOPER_CLIENT_SECRET)
+
     for i, page in enumerate(get_page(args.n, queue, done)):
+        morpheme = get_morpheme(parse(token, page.body)['result'])
         upload(client, index, {'url': page.url,
                                'title': page.title,
                                'body': page.body,
+                               'morpheme': morpheme,
                                'raw': page.response.text})
         logger.debug(f'Inserted a page into elasticsearch {i} {page.url}')
 
@@ -64,7 +69,6 @@ def main():
             break
 
     logger.info(f'crawling finished successfully.')
-    logger.info(f'{n_downloaded - no_body} pages saved.')
 
 
 if __name__ == '__main__':
