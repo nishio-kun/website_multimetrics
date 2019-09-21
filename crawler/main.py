@@ -12,6 +12,7 @@ import settings
 from src.cotoha import get_access_token, get_morpheme, parse
 from src.crawler import get_page
 from src.es_util import download_all, indice, upload
+from src.wayback import get_first_date, list_timemap
 
 
 # set logger
@@ -28,7 +29,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--url',
                         required=True,
-                        help='Website url')
+                        help='Website URL')
     parser.add_argument('-i', '--index',
                         required=True,
                         help='Index name')
@@ -57,13 +58,24 @@ def main():
                              settings.DEVELOPER_CLIENT_SECRET)
 
     for i, page in enumerate(get_page(args.n, queue, done)):
-        morpheme = get_morpheme(parse(token, page.body)['result'])
+        # Access COTOHA API.
+        if page.body:
+            logger.debug('no body')
+            morpheme = get_morpheme(parse(token, page.body)['result'])
+        else:
+            morpheme = None
+
+        # Access Wayback Machine.
+        first_date = get_first_date(list_timemap(page.url))
+
+        # Upload data into Elasticsearch
         upload(client, index, {'url': page.url,
                                'title': page.title,
                                'body': page.body,
                                'morpheme': morpheme,
-                               'raw': page.response.text})
-        logger.debug(f'Inserted a page into elasticsearch {i} {page.url}')
+                               'raw': page.response.text,
+                               'first_date': first_date})
+        logger.debug(f'{i + 1} Inserted: {page.url}')
 
         if len(queue) == 0:
             break

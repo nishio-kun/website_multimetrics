@@ -1,9 +1,20 @@
 """
 Elasticsearch, Kibana を扱うモジュール。
 """
+import logging
+import sys
 import time
 
 import elasticsearch
+
+
+formatter = logging.Formatter('[%(levelname)-8s] %(message)s')
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+handler.setFormatter(formatter)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
 
 
 BODY = {
@@ -106,7 +117,17 @@ def upload(client, index, page):
     """
     WEB ページの辞書を elasticsearch にアップロードします。
     """
-    client.index(index=index, doc_type='_doc', body=page)
+    try:
+        client.index(index=index, doc_type='_doc', body=page)
+    except elasticsearch.exceptions.RequestError as e:
+        if e.info['error']['root_cause'][0]['type'] == \
+                'mapper_parsing_exception':
+            logger.error(f'"mapper_parsing_exception" has occerred. '
+                         f'"date" field was "{page["first_date"]}"')
+        else:
+            raise
+    except Exception:
+        raise
 
 
 if __name__ == '__main__':
