@@ -2,7 +2,6 @@
 COTOHA API を扱うモジュール。
 """
 import json
-import os
 import sys
 
 import requests
@@ -114,8 +113,7 @@ if __name__ == '__main__':
         pprint.pprint(result)
         print()
 
-    print('COTOHA API TEST')
-    print()
+    print('COTOHA API TEST\n')
 
     token = get_access_token(settings.DEVELOPER_CLIENT_ID,
                              settings.DEVELOPER_CLIENT_SECRET)
