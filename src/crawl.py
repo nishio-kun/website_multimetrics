@@ -6,13 +6,12 @@ import logging
 import sys
 
 from elasticsearch import Elasticsearch
-import requests
 
 import settings
-from src.cotoha import get_access_token, get_morpheme, parse
-from src.crawler import get_page
-from src.es_util import download_all, indice, upload
-from src.wayback import get_first_date, list_timemap
+from utils.cotoha import get_access_token, get_morpheme, parse
+from utils.crawler import get_page
+from utils.es_util import download_all, indice, upload
+from utils.wayback import get_first_date, list_timemap
 
 
 # set logger
@@ -51,7 +50,7 @@ def main():
     index = f'pages-{args.index}'
 
     indice(client, index)
-    done.extend(download_all(client, index))
+    done.extend(download_all(client, index, 'url'))
 
     token = get_access_token(settings.DEVELOPER_CLIENT_ID,
                              settings.DEVELOPER_CLIENT_SECRET)

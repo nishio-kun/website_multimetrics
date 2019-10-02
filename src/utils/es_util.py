@@ -65,7 +65,7 @@ BODY = {
 }
 
 
-def download_all(client, index):
+def download_all(client, index, field):
     """
     指定された index のデータを全て取得します。
     """
@@ -75,14 +75,14 @@ def download_all(client, index):
     sid = data['_scroll_id']
     pages = data['hits']['hits']
     size = data['hits']['total']
-    ret.extend(get_data(pages, 'url'))
+    ret.extend(get_data(pages, field))
 
     while size > 0:
         data = client.scroll(scroll_id=sid, scroll='2m')
         sid = data['_scroll_id']
         pages = data['hits']['hits']
         size = len(pages)
-        ret.extend(get_data(pages, 'url'))
+        ret.extend(get_data(pages, field))
 
     return ret
 
