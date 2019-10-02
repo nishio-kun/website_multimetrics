@@ -27,16 +27,12 @@ logger.addHandler(handler)
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u', '--url',
-                        required=True,
-                        help='Website URL')
-    parser.add_argument('-i', '--index',
-                        required=True,
-                        help='Index name')
-    parser.add_argument('-n',
-                        default=10,
-                        type=int,
+    parser.add_argument('-u', '--url', required=True, help='Website URL')
+    parser.add_argument('-i', '--index', required=True, help='Index name')
+    parser.add_argument('-n', default=10, type=int,
                         help='Number of pages you want to download')
+    parser.add_argument('--no-cotoha', action='store_true',
+                        help='Not use COTOHA API.')
     args = parser.parse_args()
     return args
 
@@ -44,9 +40,12 @@ def parse_args():
 def main():
     args = parse_args()
 
+    logger.info('Start crawling...')
+    if args.no_cotoha:
+        logger.info('no COTOHA API')
+
     queue = [args.url]
     done = []
-    logger.info('Start crawling...')
 
     client = Elasticsearch(settings.HOST)
     index = f'pages-{args.index}'
@@ -59,10 +58,10 @@ def main():
 
     for i, page in enumerate(get_page(args.n, queue, done)):
         # Access COTOHA API.
-        if page.body:
-            logger.debug('no body')
+        if not args.no_cotoha and page.body:
             morpheme = get_morpheme(parse(token, page.body)['result'])
         else:
+            logger.debug('no body')
             morpheme = None
 
         # Access Wayback Machine.
